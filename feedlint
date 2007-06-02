@@ -132,7 +132,7 @@ while to_check:
 					to_check.append(r.interface)
 			if hasattr(impl, 'download_sources'):
 				for source in impl.download_sources:
-					pass #check_source(source)
+					check_source(source)
 				
 				
 	except urllib2.HTTPError, ex:
