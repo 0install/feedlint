@@ -74,10 +74,14 @@ def check_source(source):
 		try:
 			if response.status != 200:
 				raise SafeException("HTTP error: got status code %s" % response.status)
-			actual_size = int(response.getheader('Content-Length'))
-			if actual_size != source.size:
-				raise SafeException("Expected archive to have a size of %d, but server says it is %d",
-						source.size, actual_size)
+			actual_size = response.getheader('Content-Length')
+			if actual_size is None:
+				print "  No Content-Length for archive. Not checking."
+			else:
+				actual_size = int(actual_size)
+				if actual_size != source.size:
+					raise SafeException("Expected archive to have a size of %d, but server says it is %d",
+							source.size, actual_size)
 		finally:
 			response.close()
 		
