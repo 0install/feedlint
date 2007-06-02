@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<?xml-stylesheet type='text/xsl' href='interface.xsl'?>
+<interface xmlns="http://zero-install.sourceforge.net/2004/injector/interface">
+  <name>FeedLint</name>
+  <summary>check your Zero Install feeds</summary>
+  <description>
+FeedLint is a tool for Zero Install feed authors. It checks that your Zero
+Install feed can be downloaded, that it is valid and that all the links in it
+still work.
+
+Run this on all your feeds from time-to-time to make sure they still work.</description>
+  <homepage>http://0install.net</homepage>
+
+  <feed-for interface="http://0install.net/2006/interfaces/0publish"/>
+  <category>Development</category>
+  <needs-terminal/>
+
+  <group license="OSI Approved :: GNU General Public License (GPL)" main="feedlint">
+    <requires interface="http://0install.net/2006/interfaces/0publish">
+        <environment insert="0publish" mode="replace" name="PUBLISH_BIN"/>
+      </requires>
+    <implementation id="." released="Snapshot" version="0.1" version-modifier="-pre"/>
+  </group>
+</interface>

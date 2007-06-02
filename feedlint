@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+
+from optparse import OptionParser
+import sys, shutil, tempfile, urlparse
+import urllib2, os
+import logging
+from logging import info
+
+from zeroinstall import SafeException
+from zeroinstall.injector import model, gpg, reader
+
+version = '0.1'
+
+parser = OptionParser(usage="usage: %prog [options] feed.xml")
+parser.add_option("-v", "--verbose", help="more verbose output", action='count')
+parser.add_option("-V", "--version", help="display version information", action='store_true')
+
+(options, args) = parser.parse_args()
+
+if options.version:
+	print "FeedLint (zero-install) " + version
+	print "Copyright (C) 2007 Thomas Leonard"
+	print "This program comes with ABSOLUTELY NO WARRANTY,"
+	print "to the extent permitted by law."
+	print "You may redistribute copies of this program"
+	print "under the terms of the GNU General Public License."
+	print "For more information about these matters, see the file named COPYING."
+	sys.exit(0)
+
+if options.verbose:
+	logger = logging.getLogger()
+	if options.verbose == 1:
+		logger.setLevel(logging.INFO)
+	else:
+		logger.setLevel(logging.DEBUG)
+
+if len(args) < 1:
+	parser.print_help()
+	sys.exit(1)
+
+checked = set()
+
+try:
+	to_check = [model.canonical_iface_uri(a) for a in args]
+except SafeException, ex:
+	if options.verbose: raise
+	print >>sys.stderr, ex
+	sys.exit(1)
+
+def check_key(feed, fingerprint):
+	for line in os.popen('gpg --with-colons --list-keys %s' % s.fingerprint):
+		if line.startswith('pub:'):
+			key_id = line.split(':')[4]
+			break
+	else:
+		raise SafeException('Failed to find key with fingerprint %s on your keyring' % fingerprint)
+
+	key_url = urlparse.urljoin(feed, '%s.gpg' % key_id)
+	print "Checking", key_url
+
+	if key_url in checked:
+		info("(already checked key URL)")
+	else:
+		urllib2.urlopen(key_url).read()
+		checked.add(key_url)
+
+n_errors = 0
+
+while to_check:
+	feed = to_check.pop()
+	if feed in checked:
+		info("Already checked feed %s", feed)
+		continue
+
+	checked.add(feed)
+
+	print "Checking", feed
+
+	try:
+		tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
+		try:
+			stream = urllib2.urlopen(feed)
+			shutil.copyfileobj(stream, tmp)
+			data, sigs = gpg.check_stream(tmp)
+
+			for s in sigs:
+				if isinstance(s, gpg.ValidSig):
+					check_key(feed, s.fingerprint)
+				else:
+					raise SafeException("Can't check sig: %s" % s)
+
+			feed_tmp = tempfile.NamedTemporaryFile(prefix = 'feedlint-')
+			try:
+				shutil.copyfileobj(data, feed_tmp)
+				feed_tmp.seek(0)
+				iface = model.Interface(feed)
+				reader.update(iface, feed_tmp.name)
+
+				for f in iface.feeds:
+					info("Will check feed %s", f.uri)
+					to_check.append(f.uri)
+			finally:
+				feed_tmp.close()
+		finally:
+			tmp.close()
+	except urllib2.HTTPError, ex:
+		print >>sys.stderr, ex
+		n_errors += 1
+	except SafeException, ex:
+		if options.verbose: raise
+		print >>sys.stderr, ex
+		n_errors += 1
+
+if n_errors == 0:
+	print "OK"
+else:
+	print "\nERRORS FOUND:", n_errors
+	sys.exit(1)
