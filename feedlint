@@ -2,7 +2,7 @@
 
 from optparse import OptionParser
 import sys, shutil, tempfile, urlparse
-import urllib2, os
+import urllib2, os, httplib
 import logging
 from logging import info
 
@@ -64,6 +64,27 @@ def check_key(feed, fingerprint):
 		urllib2.urlopen(key_url).read()
 		checked.add(key_url)
 
+def check_source(source):
+	if hasattr(source, 'url'):
+		print "  Checking archive", source.url
+		address = urlparse.urlparse(source.url)
+		http = httplib.HTTPConnection(address.netloc, address.port or 80)
+		http.request('HEAD', source.url)
+		response = http.getresponse()
+		try:
+			if response.status != 200:
+				raise SafeException("HTTP error: got status code %s" % response.status)
+			actual_size = int(response.getheader('Content-Length'))
+			if actual_size != source.size:
+				raise SafeException("Expected archive to have a size of %d, but server says it is %d",
+						source.size, actual_size)
+		finally:
+			response.close()
+		
+	elif hasattr(source, 'steps'):
+		for step in source.steps:
+			check_source(step)
+
 n_errors = 0
 
 while to_check:
@@ -103,6 +124,17 @@ while to_check:
 				feed_tmp.close()
 		finally:
 			tmp.close()
+
+		for impl in iface.implementations.values():
+			for r in impl.dependencies.values():
+				if r.interface not in checked:
+					info("Will check dependency %s", r)
+					to_check.append(r.interface)
+			if hasattr(impl, 'download_sources'):
+				for source in impl.download_sources:
+					pass #check_source(source)
+				
+				
 	except urllib2.HTTPError, ex:
 		print >>sys.stderr, ex
 		n_errors += 1
