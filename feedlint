@@ -56,11 +56,11 @@ def check_key(feed, fingerprint):
 		raise SafeException('Failed to find key with fingerprint %s on your keyring' % fingerprint)
 
 	key_url = urlparse.urljoin(feed, '%s.gpg' % key_id)
-	print "Checking", key_url
 
 	if key_url in checked:
-		info("(already checked key URL)")
+		info("(already checked key URL %s)", key_url)
 	else:
+		print "  Checking", key_url
 		urllib2.urlopen(key_url).read()
 		checked.add(key_url)
 
