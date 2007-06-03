@@ -27,6 +27,7 @@ def checking(msg):
 	msg = '  ' + msg
 	cursor_pos = len(msg)
 	sys.stdout.write(msg)
+	sys.stdout.flush()
 
 def result(msg, colour = 'GREEN'):
 	global cursor_pos
