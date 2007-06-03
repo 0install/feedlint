@@ -16,6 +16,6 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
   <needs-terminal/>
 
   <group license="OSI Approved :: GNU General Public License (GPL)" main="feedlint">
-    <implementation id="." released="Snapshot" version="0.1" version-modifier='-post'/>
+    <implementation id="." released="Snapshot" version="0.2" version-modifier='-post'/>
   </group>
 </interface>
