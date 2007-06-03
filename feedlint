@@ -3,6 +3,7 @@
 from optparse import OptionParser
 import sys, shutil, tempfile, urlparse
 import urllib2, os, httplib
+from ftplib import FTP
 import logging, time
 from logging import info
 
@@ -103,30 +104,45 @@ def get_http_size(url, ttl = 1):
 	else:
 		raise SafeException('Too many redirections.')
 
+def get_ftp_size(url):
+	address = urlparse.urlparse(url)
+	ftp = FTP(address.netloc)
+	try:
+		ftp.login()
+		return ftp.size(url.split('/', 3)[3])
+	finally:
+		ftp.close()
+
+def get_size(url):
+	scheme = urlparse.urlparse(url)[0].lower()
+	if scheme.startswith('http'):
+		return get_http_size(url)
+	elif scheme.startswith('ftp'):
+		return get_ftp_size(url)
+	else:
+		raise SafeException("Unknown scheme '%s' in '%s'" % (scheme, url))
+
 def check_source(source):
 	if hasattr(source, 'url'):
 		checking("Checking archive %s" % source.url)
-		if source.url.startswith('ftp:'):
-			result("Cant' check FTP", 'YELLOW')
+		actual_size = get_size(source.url)
+		if actual_size is None:
+			result("No Content-Length for archive; can't check", 'YELLOW')
 		else:
-			actual_size = get_http_size(source.url)
-			if actual_size is None:
-				result("No Content-Length for archive; can't check", 'YELLOW')
-			else:
-				actual_size = int(actual_size)
-				expected_size = source.size + (source.start_offset or 0)
-				if actual_size != expected_size:
-					error('Bad length')
-					raise SafeException("Expected archive to have a size of %d, but server says it is %d" %
-							(expected_size, actual_size))
-				result('OK')
+			actual_size = int(actual_size)
+			expected_size = source.size + (source.start_offset or 0)
+			if actual_size != expected_size:
+				error('Bad length')
+				raise SafeException("Expected archive to have a size of %d, but server says it is %d" %
+						(expected_size, actual_size))
+			result('OK')
 	elif hasattr(source, 'steps'):
 		for step in source.steps:
 			check_source(step)
 
 def check_exists(url):
 	checking("Checking URL exists %s" % url)
-	get_http_size(url)
+	get_size(url)
 	result('OK')
 
 n_errors = 0
