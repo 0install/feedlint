@@ -3,13 +3,19 @@
 from optparse import OptionParser
 import sys, shutil, tempfile, urlparse
 import urllib2, os, httplib
-import logging
+import logging, time
 from logging import info
 
 from zeroinstall import SafeException
-from zeroinstall.injector import model, gpg, reader
+from zeroinstall.injector import model, gpg, reader, namespaces
+
+from display import checking, result, error, highlight
+
+now = time.time()
 
 version = '0.1'
+
+WEEK = 60 * 60 * 24 * 7
 
 parser = OptionParser(usage="usage: %prog [options] feed.xml")
 parser.add_option("-v", "--verbose", help="more verbose output", action='count')
@@ -60,34 +66,55 @@ def check_key(feed, fingerprint):
 	if key_url in checked:
 		info("(already checked key URL %s)", key_url)
 	else:
-		print "  Checking", key_url
+		checking("Checking key %s" % key_url)
 		urllib2.urlopen(key_url).read()
+		result('OK')
 		checked.add(key_url)
+
+def get_http_size(url, ttl = 1):
+	assert url
+	address = urlparse.urlparse(url)
+	http = httplib.HTTPConnection(address.netloc, address.port or 80)
+	http.request('HEAD', url)
+	response = http.getresponse()
+	try:
+		if response.status == 200:
+			return response.getheader('Content-Length')
+		elif response.status in (301, 302):
+			new_url = response.getheader('URI') or response.getheader('Location')
+		else:
+			raise SafeException("HTTP error: got status code %s" % response.status)
+	finally:
+		response.close()
+
+	if ttl:
+		result("Moved", 'YELLOW')
+		checking("Checking new URL %s" % new_url)
+		assert new_url
+		return get_http_size(new_url, ttl - 1)
+	else:
+		raise SafeException('Too many redirections.')
 
 def check_source(source):
 	if hasattr(source, 'url'):
-		print "  Checking archive", source.url
-		address = urlparse.urlparse(source.url)
-		http = httplib.HTTPConnection(address.netloc, address.port or 80)
-		http.request('HEAD', source.url)
-		response = http.getresponse()
-		try:
-			if response.status != 200:
-				raise SafeException("HTTP error: got status code %s" % response.status)
-			actual_size = response.getheader('Content-Length')
-			if actual_size is None:
-				print "  No Content-Length for archive. Not checking."
-			else:
-				actual_size = int(actual_size)
-				if actual_size != source.size:
-					raise SafeException("Expected archive to have a size of %d, but server says it is %d",
-							source.size, actual_size)
-		finally:
-			response.close()
-		
+		checking("Checking archive %s" % source.url)
+		actual_size = get_http_size(source.url)
+		if actual_size is None:
+			result("No Content-Length for archive; can't check", 'YELLOW')
+		else:
+			actual_size = int(actual_size)
+			if actual_size != source.size:
+				raise SafeException("Expected archive to have a size of %d, but server says it is %d",
+						source.size, actual_size)
+			result('OK')
 	elif hasattr(source, 'steps'):
 		for step in source.steps:
 			check_source(step)
+
+def check_exists(url):
+	checking("Checking URL exists %s" % url)
+	get_http_size(url)
+	result('OK')
 
 n_errors = 0
 
@@ -137,6 +164,30 @@ while to_check:
 			if hasattr(impl, 'download_sources'):
 				for source in impl.download_sources:
 					check_source(source)
+			stability = impl.upstream_stability or model.testing
+			if stability == model.testing:
+				error = None
+				if not impl.released:
+					error = "No release data on testing version"
+				else:
+					try:
+						released = time.strptime(impl.released, '%Y-%m-%d')
+					except ValueError, ex:
+						error = "Can't parse date"
+					else:
+						ago = now - time.mktime(released)
+						if ago < 0:
+							error = 'Release data is in the future!'
+						elif ago > 1 * WEEK:
+							error = 'Has been Testing for more than a week'
+				if error:
+					print highlight("  Version %s: %s (released %s)" % (impl.get_version(), error, impl.released), 'RED')
+		
+		for homepage in iface.get_metadata(namespaces.XMLNS_IFACE, 'homepage'):
+			check_exists(homepage.content)
+
+		for icon in iface.get_metadata(namespaces.XMLNS_IFACE, 'icon'):
+			check_exists(icon.getAttribute('href'))
 				
 				
 	except urllib2.HTTPError, ex:
