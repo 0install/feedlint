@@ -179,9 +179,10 @@ while to_check:
 						if ago < 0:
 							error = 'Release data is in the future!'
 						elif ago > 1 * WEEK:
-							error = 'Has been Testing for more than a week'
+							print highlight('  Version %s has been Testing for more than a week' % impl.get_version(),
+									'YELLOW')
 				if error:
-					print highlight("  Version %s: %s (released %s)" % (impl.get_version(), error, impl.released), 'RED')
+					raise SafeException("Version %s: %s (released %s)" % (impl.get_version(), error, impl.released))
 		
 		for homepage in iface.get_metadata(namespaces.XMLNS_IFACE, 'homepage'):
 			check_exists(homepage.content)
@@ -191,11 +192,11 @@ while to_check:
 				
 				
 	except urllib2.HTTPError, ex:
-		print >>sys.stderr, ex
+		print highlight('  ' + str(ex), 'RED')
 		n_errors += 1
 	except SafeException, ex:
 		if options.verbose: raise
-		print >>sys.stderr, ex
+		print highlight('  ' + str(ex), 'RED')
 		n_errors += 1
 
 if n_errors == 0:
