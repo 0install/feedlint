@@ -72,10 +72,18 @@ def check_key(feed, fingerprint):
 		checked.add(key_url)
 
 def get_http_size(url, ttl = 1):
-	assert url
+	assert url.lower().startswith('http://')
+
 	address = urlparse.urlparse(url)
 	http = httplib.HTTPConnection(address.netloc, address.port or 80)
-	http.request('HEAD', url)
+
+	parts = url.split('/', 3)
+	if len(parts) == 4:
+		path = parts[3]
+	else:
+		path = ''
+
+	http.request('HEAD', '/' + path)
 	response = http.getresponse()
 	try:
 		if response.status == 200:
@@ -98,17 +106,20 @@ def get_http_size(url, ttl = 1):
 def check_source(source):
 	if hasattr(source, 'url'):
 		checking("Checking archive %s" % source.url)
-		actual_size = get_http_size(source.url)
-		if actual_size is None:
-			result("No Content-Length for archive; can't check", 'YELLOW')
+		if source.url.startswith('ftp:'):
+			result("Cant' check FTP")
 		else:
-			actual_size = int(actual_size)
-			expected_size = source.size + (source.start_offset or 0)
-			if actual_size != expected_size:
-				error('Bad length')
-				raise SafeException("Expected archive to have a size of %d, but server says it is %d" %
-						(expected_size, actual_size))
-			result('OK')
+			actual_size = get_http_size(source.url)
+			if actual_size is None:
+				result("No Content-Length for archive; can't check", 'YELLOW')
+			else:
+				actual_size = int(actual_size)
+				expected_size = source.size + (source.start_offset or 0)
+				if actual_size != expected_size:
+					error('Bad length')
+					raise SafeException("Expected archive to have a size of %d, but server says it is %d" %
+							(expected_size, actual_size))
+				result('OK')
 	elif hasattr(source, 'steps'):
 		for step in source.steps:
 			check_source(step)
@@ -131,32 +142,36 @@ while to_check:
 	print "Checking", feed
 
 	try:
-		tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
-		try:
-			stream = urllib2.urlopen(feed)
-			shutil.copyfileobj(stream, tmp)
-			data, sigs = gpg.check_stream(tmp)
+		iface = model.Interface(feed)
 
-			for s in sigs:
-				if isinstance(s, gpg.ValidSig):
-					check_key(feed, s.fingerprint)
-				else:
-					raise SafeException("Can't check sig: %s" % s)
-
-			feed_tmp = tempfile.NamedTemporaryFile(prefix = 'feedlint-')
+		if feed.startswith('/'):
+			reader.update(iface, feed, local = True)
+		else:
+			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
 			try:
-				shutil.copyfileobj(data, feed_tmp)
-				feed_tmp.seek(0)
-				iface = model.Interface(feed)
-				reader.update(iface, feed_tmp.name)
+				stream = urllib2.urlopen(feed)
+				shutil.copyfileobj(stream, tmp)
+				data, sigs = gpg.check_stream(tmp)
 
-				for f in iface.feeds:
-					info("Will check feed %s", f.uri)
-					to_check.append(f.uri)
+				for s in sigs:
+					if isinstance(s, gpg.ValidSig):
+						check_key(feed, s.fingerprint)
+					else:
+						raise SafeException("Can't check sig: %s" % s)
+
+				feed_tmp = tempfile.NamedTemporaryFile(prefix = 'feedlint-')
+				try:
+					shutil.copyfileobj(data, feed_tmp)
+					feed_tmp.seek(0)
+					reader.update(iface, feed_tmp.name)
+
+					for f in iface.feeds:
+						info("Will check feed %s", f.uri)
+						to_check.append(f.uri)
+				finally:
+					feed_tmp.close()
 			finally:
-				feed_tmp.close()
-		finally:
-			tmp.close()
+				tmp.close()
 
 		for impl in iface.implementations.values():
 			for r in impl.dependencies.values():
