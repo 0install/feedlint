@@ -107,7 +107,7 @@ def check_source(source):
 	if hasattr(source, 'url'):
 		checking("Checking archive %s" % source.url)
 		if source.url.startswith('ftp:'):
-			result("Cant' check FTP")
+			result("Cant' check FTP", 'YELLOW')
 		else:
 			actual_size = get_http_size(source.url)
 			if actual_size is None:
