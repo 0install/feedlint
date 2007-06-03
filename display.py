@@ -23,14 +23,14 @@ normal = curses.tigetstr('sgr0') or ''
 def checking(msg):
 	global cursor_pos
 	if cursor_pos:
-		result('!')
+		result('!', 'RED')
 	msg = '  ' + msg
 	cursor_pos = len(msg)
 	sys.stdout.write(msg)
 
 def result(msg, colour = 'GREEN'):
 	global cursor_pos
-	result_col = n_cols - max(10, len(msg)) - 1
+	result_col = n_cols - max(15, len(msg) + 5)
 	if cursor_pos > result_col:
 		print
 		cursor_pos = 0
@@ -41,6 +41,11 @@ def result(msg, colour = 'GREEN'):
 
 def error(msg):
 	result(msg, 'RED')
+
+def error_new_line(msg):
+	if cursor_pos:
+		error('ERROR')
+	print highlight(msg, 'RED')
 
 def highlight(msg, colour):
 	return curses.tparm(set_fg, COLOURS[colour]) + msg + curses.tparm(normal)

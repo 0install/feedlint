@@ -9,7 +9,7 @@ from logging import info
 from zeroinstall import SafeException
 from zeroinstall.injector import model, gpg, reader, namespaces
 
-from display import checking, result, error, highlight
+from display import checking, result, error, highlight, error_new_line
 
 now = time.time()
 
@@ -103,9 +103,11 @@ def check_source(source):
 			result("No Content-Length for archive; can't check", 'YELLOW')
 		else:
 			actual_size = int(actual_size)
-			if actual_size != source.size:
-				raise SafeException("Expected archive to have a size of %d, but server says it is %d",
-						source.size, actual_size)
+			expected_size = source.size + (source.start_offset or 0)
+			if actual_size != expected_size:
+				error('Bad length')
+				raise SafeException("Expected archive to have a size of %d, but server says it is %d" %
+						(expected_size, actual_size))
 			result('OK')
 	elif hasattr(source, 'steps'):
 		for step in source.steps:
@@ -166,23 +168,23 @@ while to_check:
 					check_source(source)
 			stability = impl.upstream_stability or model.testing
 			if stability == model.testing:
-				error = None
+				testing_error = None
 				if not impl.released:
-					error = "No release data on testing version"
+					testing_error = "No release data on testing version"
 				else:
 					try:
 						released = time.strptime(impl.released, '%Y-%m-%d')
 					except ValueError, ex:
-						error = "Can't parse date"
+						testing_error = "Can't parse date"
 					else:
 						ago = now - time.mktime(released)
 						if ago < 0:
-							error = 'Release data is in the future!'
+							testing_error = 'Release data is in the future!'
 						elif ago > 1 * WEEK:
 							print highlight('  Version %s has been Testing for more than a week' % impl.get_version(),
 									'YELLOW')
-				if error:
-					raise SafeException("Version %s: %s (released %s)" % (impl.get_version(), error, impl.released))
+				if testing_error:
+					raise SafeException("Version %s: %s (released %s)" % (impl.get_version(), testing_error, impl.released))
 		
 		for homepage in iface.get_metadata(namespaces.XMLNS_IFACE, 'homepage'):
 			check_exists(homepage.content)
@@ -192,11 +194,11 @@ while to_check:
 				
 				
 	except urllib2.HTTPError, ex:
-		print highlight('  ' + str(ex), 'RED')
+		error_new_line('  ' + str(ex))
 		n_errors += 1
 	except SafeException, ex:
 		if options.verbose: raise
-		print highlight('  ' + str(ex), 'RED')
+		error_new_line('  ' + str(ex))
 		n_errors += 1
 
 if n_errors == 0:
