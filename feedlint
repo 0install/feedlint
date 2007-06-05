@@ -2,6 +2,7 @@
 
 from optparse import OptionParser
 import sys, shutil, tempfile, urlparse
+import socket
 import urllib2, os, httplib
 from ftplib import FTP
 import logging, time
@@ -19,6 +20,7 @@ version = '0.2'
 WEEK = 60 * 60 * 24 * 7
 
 parser = OptionParser(usage="usage: %prog [options] feed.xml")
+parser.add_option("-d", "--dependencies", help="also check feeds for dependencies", action='store_true')
 parser.add_option("-v", "--verbose", help="more verbose output", action='count')
 parser.add_option("-V", "--version", help="display version information", action='store_true')
 
@@ -84,7 +86,7 @@ def get_http_size(url, ttl = 1):
 	else:
 		path = ''
 
-	http.request('HEAD', '/' + path)
+	http.request('HEAD', '/' + path, headers = {'Host': address.netloc})
 	response = http.getresponse()
 	try:
 		if response.status == 200:
@@ -155,18 +157,20 @@ while to_check:
 
 	checked.add(feed)
 
-	print "Checking", feed
+	checking("Checking " + feed, indent = 0)
 
 	try:
 		iface = model.Interface(feed)
 
 		if feed.startswith('/'):
 			reader.update(iface, feed, local = True)
+			result('Local')
 		else:
 			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
 			try:
 				stream = urllib2.urlopen(feed)
 				shutil.copyfileobj(stream, tmp)
+				result('Fetched')
 				data, sigs = gpg.check_stream(tmp)
 
 				for s in sigs:
@@ -193,7 +197,10 @@ while to_check:
 			for r in impl.dependencies.values():
 				if r.interface not in checked:
 					info("Will check dependency %s", r)
-					to_check.append(r.interface)
+					if options.dependencies:
+						to_check.append(r.interface)
+					else:
+						check_exists(r.interface)
 			if hasattr(impl, 'download_sources'):
 				for source in impl.download_sources:
 					check_source(source)
@@ -223,9 +230,9 @@ while to_check:
 		for icon in iface.get_metadata(namespaces.XMLNS_IFACE, 'icon'):
 			check_exists(icon.getAttribute('href'))
 				
-				
-	except urllib2.HTTPError, ex:
-		error_new_line('  ' + str(ex))
+	except (urllib2.HTTPError, httplib.BadStatusLine, socket.error), ex:
+		err_msg = str(ex).strip() or str(type(ex))
+		error_new_line('  ' + err_msg)
 		n_errors += 1
 	except SafeException, ex:
 		if options.verbose: raise

@@ -20,11 +20,11 @@ COLOURS = {
 set_fg = curses.tigetstr('setf') or ''
 normal = curses.tigetstr('sgr0') or ''
 
-def checking(msg):
+def checking(msg, indent = 2):
 	global cursor_pos
 	if cursor_pos:
 		result('!', 'RED')
-	msg = '  ' + msg
+	msg = (' ' * indent) + msg
 	cursor_pos = len(msg)
 	sys.stdout.write(msg)
 	sys.stdout.flush()
