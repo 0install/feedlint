@@ -4,7 +4,7 @@ from optparse import OptionParser
 import sys, shutil, tempfile, urlparse
 import socket
 import urllib2, os, httplib
-from ftplib import FTP
+import ftplib
 import logging, time
 from logging import info
 
@@ -108,7 +108,7 @@ def get_http_size(url, ttl = 1):
 
 def get_ftp_size(url):
 	address = urlparse.urlparse(url)
-	ftp = FTP(address.netloc)
+	ftp = ftplib.FTP(address.netloc)
 	try:
 		ftp.login()
 		return ftp.size(url.split('/', 3)[3])
@@ -194,13 +194,14 @@ while to_check:
 				tmp.close()
 
 		for impl in iface.implementations.values():
-			for r in impl.dependencies.values():
-				if r.interface not in checked:
-					info("Will check dependency %s", r)
-					if options.dependencies:
-						to_check.append(r.interface)
-					else:
-						check_exists(r.interface)
+			if hasattr(impl, 'dependencies'):
+				for r in impl.dependencies.values():
+					if r.interface not in checked:
+						info("Will check dependency %s", r)
+						if options.dependencies:
+							to_check.append(r.interface)
+						else:
+							check_exists(r.interface)
 			if hasattr(impl, 'download_sources'):
 				for source in impl.download_sources:
 					check_source(source)
@@ -230,7 +231,7 @@ while to_check:
 		for icon in iface.get_metadata(namespaces.XMLNS_IFACE, 'icon'):
 			check_exists(icon.getAttribute('href'))
 				
-	except (urllib2.HTTPError, httplib.BadStatusLine, socket.error), ex:
+	except (urllib2.HTTPError, httplib.BadStatusLine, socket.error, ftplib.error_perm), ex:
 		err_msg = str(ex).strip() or str(type(ex))
 		error_new_line('  ' + err_msg)
 		n_errors += 1
