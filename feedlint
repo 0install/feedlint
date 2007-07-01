@@ -170,7 +170,19 @@ while to_check:
 			try:
 				stream = urllib2.urlopen(feed)
 				shutil.copyfileobj(stream, tmp)
-				result('Fetched')
+				tmp.seek(0)
+				start = tmp.read(5)
+				if start == '<?xml':
+					result('Fetched')
+				elif start == '-----':
+					result('Old sig', colour = 'YELLOW')
+					error_new_line('  Feed has an old-style plain GPG signature. Use 0publish --xmlsign.',
+							colour = 'YELLOW')
+				else:
+					result('Fetched')
+					error_new_line('  Unknown format. File starts "%s"' % start)
+
+				tmp.seek(0)
 				data, sigs = gpg.check_stream(tmp)
 
 				for s in sigs:

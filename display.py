@@ -43,10 +43,10 @@ def result(msg, colour = 'GREEN'):
 def error(msg):
 	result(msg, 'RED')
 
-def error_new_line(msg):
+def error_new_line(msg, colour = 'RED'):
 	if cursor_pos:
 		error('ERROR')
-	print highlight(msg, 'RED')
+	print highlight(msg, colour)
 
 def highlight(msg, colour):
 	return curses.tparm(set_fg, COLOURS[colour]) + msg + curses.tparm(normal)
