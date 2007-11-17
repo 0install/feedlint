@@ -111,7 +111,7 @@ def get_http_size(url, ttl = 1):
 		if response.status == 200:
 			return response.getheader('Content-Length')
 		elif response.status in (301, 302):
-			new_url = response.getheader('URI') or response.getheader('Location')
+			new_url = response.getheader('Location') or response.getheader('URI')
 		else:
 			raise SafeException("HTTP error: got status code %s" % response.status)
 	finally:
