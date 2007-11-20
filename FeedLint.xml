@@ -15,6 +15,11 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
   <category>Development</category>
   <needs-terminal/>
 
+  <release:management xmlns:release="http://zero-install.sourceforge.net/2007/namespaces/0release">
+    <!-- Update the copy of the version number in 0publish -->
+    <release:action phase="commit-release">sed -i &quot;s/^version = '.*'$/version = '$RELEASE_VERSION'/&quot; feedlint</release:action>
+  </release:management>
+
   <group license="OSI Approved :: GNU General Public License (GPL)" main="feedlint">
     <implementation id="." released="Snapshot" version="0.3" version-modifier='-post'/>
   </group>
