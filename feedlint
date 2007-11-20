@@ -15,7 +15,7 @@ from display import checking, result, error, highlight, error_new_line
 
 now = time.time()
 
-version = '0.3'
+version = '0.4'
 
 WEEK = 60 * 60 * 24 * 7
 
