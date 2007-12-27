@@ -40,6 +40,7 @@ assert port(urlparse.urlparse('http://foo:81')) == 81
 
 parser = OptionParser(usage="usage: %prog [options] feed.xml")
 parser.add_option("-d", "--dependencies", help="also check feeds for dependencies", action='store_true')
+parser.add_option("-s", "--skip-archives", help="don't check the archives are OK", action='store_true')
 parser.add_option("-v", "--verbose", help="more verbose output", action='count')
 parser.add_option("-V", "--version", help="display version information", action='store_true')
 
@@ -162,10 +163,14 @@ def check_source(source):
 		for step in source.steps:
 			check_source(step)
 
+existing_urls = set()
 def check_exists(url):
+	if url in existing_urls: return		# Already checked
+
 	checking("Checking URL exists %s" % url)
 	get_size(url)
 	result('OK')
+	existing_urls.add(url)
 
 n_errors = 0
 
@@ -234,7 +239,7 @@ while to_check:
 							to_check.append(r.interface)
 						else:
 							check_exists(r.interface)
-			if hasattr(impl, 'download_sources'):
+			if hasattr(impl, 'download_sources') and not options.skip_archives:
 				for source in impl.download_sources:
 					check_source(source)
 			stability = impl.upstream_stability or model.testing
