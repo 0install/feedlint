@@ -132,6 +132,7 @@ def get_ftp_size(url):
 	ftp = ftplib.FTP(host(address))
 	try:
 		ftp.login()
+		ftp.voidcmd('TYPE I')
 		return ftp.size(url.split('/', 3)[3])
 	finally:
 		ftp.close()
