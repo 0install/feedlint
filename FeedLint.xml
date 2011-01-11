@@ -21,6 +21,6 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
   </release:management>
 
   <group license="OSI Approved :: GNU General Public License (GPL)" main="feedlint">
-    <implementation id="." released="2011-01-11" version="0.5"/>
+    <implementation id="." version="0.5-post"/>
   </group>
 </interface>
