@@ -235,6 +235,7 @@ while to_check:
 			finally:
 				tmp.close()
 
+		highest_version = None
 		for impl in iface.implementations.values():
 			if hasattr(impl, 'dependencies'):
 				for r in impl.dependencies.values():
@@ -248,6 +249,8 @@ while to_check:
 				for source in impl.download_sources:
 					check_source(source)
 			stability = impl.upstream_stability or model.testing
+			if highest_version is None or impl.version > highest_version.version:
+				highest_version = impl
 			if stability == model.testing:
 				testing_error = None
 				if not impl.released:
@@ -261,11 +264,11 @@ while to_check:
 						ago = now - time.mktime(released)
 						if ago < 0:
 							testing_error = 'Release data is in the future!'
-						elif ago > 1 * WEEK:
-							print highlight('  Version %s has been Testing for more than a week' % impl.get_version(),
-									'YELLOW')
 				if testing_error:
 					raise SafeException("Version %s: %s (released %s)" % (impl.get_version(), testing_error, impl.released))
+
+		if highest_version and (highest_version.upstream_stability or model.testing) is model.testing:
+			print highlight('  Highest version (%s) is still "testing"' % highest_version.get_version(), 'YELLOW')
 		
 		for homepage in iface.get_metadata(namespaces.XMLNS_IFACE, 'homepage'):
 			check_exists(homepage.content)
