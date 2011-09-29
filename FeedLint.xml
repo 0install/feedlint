@@ -29,6 +29,6 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
       <environment insert="" mode="prepend" name="PYTHONPATH"/>
     </requires>
-    <implementation id="." released="2011-09-29" version="0.6"/>
+    <implementation id="." version="0.6-post"/>
   </group>
 </interface>
