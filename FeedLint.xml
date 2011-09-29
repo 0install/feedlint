@@ -21,14 +21,14 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
   </release:management>
 
   <group license="OSI Approved :: GNU General Public License (GPL)" main="feedlint">
-    <command name='run' path='feedlint'>
-      <runner interface='http://repo.roscidus.com/python/python'>
-	<version before='3'/>
+    <command name="run" path="feedlint">
+      <runner interface="http://repo.roscidus.com/python/python">
+	<version before="3"/>
       </runner>
     </command>
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
       <environment insert="" mode="prepend" name="PYTHONPATH"/>
     </requires>
-    <implementation id="." version="0.5-post"/>
+    <implementation id="." released="2011-09-29" version="0.6"/>
   </group>
 </interface>
