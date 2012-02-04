@@ -9,7 +9,7 @@ import logging, time, traceback
 from logging import info
 
 from zeroinstall import SafeException
-from zeroinstall.injector import model, gpg, reader, namespaces
+from zeroinstall.injector import model, gpg, namespaces, qdom
 
 from display import checking, result, error, highlight, error_new_line
 
@@ -190,10 +190,9 @@ while to_check:
 	checking("Checking " + feed, indent = 0)
 
 	try:
-		iface = model.Interface(feed)
-
 		if feed.startswith('/'):
-			reader.update(iface, feed, local = True)
+			with open(feed) as stream:
+				feed_obj = model.ZeroInstallFeed(qdom.parse(stream), local_path = feed)
 			result('Local')
 		else:
 			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
@@ -221,22 +220,16 @@ while to_check:
 					else:
 						raise SafeException("Can't check sig: %s" % s)
 
-				feed_tmp = tempfile.NamedTemporaryFile(prefix = 'feedlint-')
-				try:
-					shutil.copyfileobj(data, feed_tmp)
-					feed_tmp.seek(0)
-					reader.update(iface, feed_tmp.name)
-
-					for f in iface.feeds:
-						info("Will check feed %s", f.uri)
-						to_check.append(f.uri)
-				finally:
-					feed_tmp.close()
+				feed_obj = model.ZeroInstallFeed(qdom.parse(data))
 			finally:
 				tmp.close()
 
+		for f in feed_obj.feeds:
+			info("Will check feed %s", f.uri)
+			to_check.append(f.uri)
+
 		highest_version = None
-		for impl in iface.implementations.values():
+		for impl in feed_obj.implementations.values():
 			if hasattr(impl, 'dependencies'):
 				for r in impl.dependencies.values():
 					if r.interface not in checked:
@@ -270,10 +263,10 @@ while to_check:
 		if highest_version and (highest_version.upstream_stability or model.testing) is model.testing:
 			print highlight('  Highest version (%s) is still "testing"' % highest_version.get_version(), 'YELLOW')
 		
-		for homepage in iface.get_metadata(namespaces.XMLNS_IFACE, 'homepage'):
+		for homepage in feed_obj.get_metadata(namespaces.XMLNS_IFACE, 'homepage'):
 			check_exists(homepage.content)
 
-		for icon in iface.get_metadata(namespaces.XMLNS_IFACE, 'icon'):
+		for icon in feed_obj.get_metadata(namespaces.XMLNS_IFACE, 'icon'):
 			check_exists(icon.getAttribute('href'))
 				
 	except (urllib2.HTTPError, httplib.BadStatusLine, socket.error, ftplib.error_perm), ex:
