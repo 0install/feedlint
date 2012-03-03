@@ -221,6 +221,10 @@ while to_check:
 						raise SafeException("Can't check sig: %s" % s)
 
 				feed_obj = model.ZeroInstallFeed(qdom.parse(data))
+
+				if feed_obj.url != feed:
+					raise SafeException('Incorrect URL "%s"' % feed_obj.url)
+
 			finally:
 				tmp.close()
 
