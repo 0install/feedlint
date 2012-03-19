@@ -115,7 +115,7 @@ def get_http_size(url, ttl = 3):
 	try:
 		if response.status == 200:
 			return response.getheader('Content-Length')
-		elif response.status in (301, 302):
+		elif response.status in (301, 302, 303):
 			new_url_rel = response.getheader('Location') or response.getheader('URI')
 			new_url = urlparse.urljoin(url, new_url_rel)
 		else:
