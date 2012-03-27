@@ -197,8 +197,11 @@ while to_check:
 		else:
 			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
 			try:
-				stream = urllib2.urlopen(feed)
-				shutil.copyfileobj(stream, tmp)
+				try:
+					stream = urllib2.urlopen(feed)
+					shutil.copyfileobj(stream, tmp)
+				except Exception as ex:
+					raise SafeException('Failed to fetch feed: {ex}'.format(ex = ex))
 				tmp.seek(0)
 				start = tmp.read(5)
 				if start == '<?xml':
