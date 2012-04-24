@@ -248,6 +248,9 @@ while to_check:
 			if hasattr(impl, 'download_sources') and not options.skip_archives:
 				for source in impl.download_sources:
 					check_source(source)
+			if impl.local_path is None:
+				if not impl.digests:
+					raise SafeException("Version {version} has no digests".format(version = impl.get_version()))
 			stability = impl.upstream_stability or model.testing
 			if highest_version is None or impl.version > highest_version.version:
 				highest_version = impl
