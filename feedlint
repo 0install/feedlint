@@ -257,7 +257,8 @@ while to_check:
 			if stability == model.testing:
 				testing_error = None
 				if not impl.released:
-					testing_error = "No release data on testing version"
+					if not impl.local_path:
+						testing_error = "No release date on testing version"
 				else:
 					try:
 						released = time.strptime(impl.released, '%Y-%m-%d')
@@ -266,7 +267,7 @@ while to_check:
 					else:
 						ago = now - time.mktime(released)
 						if ago < 0:
-							testing_error = 'Release data is in the future!'
+							testing_error = 'Release date is in the future!'
 				if testing_error:
 					raise SafeException("Version %s: %s (released %s)" % (impl.get_version(), testing_error, impl.released))
 
