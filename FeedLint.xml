@@ -26,6 +26,12 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
 	<version before="3"/>
       </runner>
     </command>
+    <command name="test" path="feedlint">
+      <runner interface="http://repo.roscidus.com/python/python">
+	<version before="3"/>
+      </runner>
+      <arg>FeedLint.xml</arg>
+    </command>
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
       <environment insert="" mode="prepend" name="PYTHONPATH"/>
     </requires>
