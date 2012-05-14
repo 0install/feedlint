@@ -76,15 +76,15 @@ except SafeException, ex:
 	print >>sys.stderr, ex
 	sys.exit(1)
 
-def check_key(feed, fingerprint):
-	for line in os.popen('gpg --with-colons --list-keys %s' % s.fingerprint):
+def check_key(feed_url, fingerprint):
+	for line in os.popen('gpg --with-colons --list-keys %s' % fingerprint):
 		if line.startswith('pub:'):
 			key_id = line.split(':')[4]
 			break
 	else:
 		raise SafeException('Failed to find key with fingerprint %s on your keyring' % fingerprint)
 
-	key_url = urlparse.urljoin(feed, '%s.gpg' % key_id)
+	key_url = urlparse.urljoin(feed_url, '%s.gpg' % key_id)
 
 	if key_url in checked:
 		info("(already checked key URL %s)", key_url)
@@ -179,6 +179,28 @@ def check_exists(url):
 
 n_errors = 0
 
+def check_gpg_sig(feed_url, stream):
+	start = stream.read(5)
+	if start == '<?xml':
+		result('Fetched')
+	elif start == '-----':
+		result('Old sig', colour = 'RED')
+		error_new_line('  Feed has an old-style plain GPG signature. Use 0publish --xmlsign.',
+				colour = 'YELLOW')
+	else:
+		result('Fetched')
+		error_new_line('  Unknown format. File starts "%s"' % start)
+
+	data, sigs = gpg.check_stream(stream)
+
+	for s in sigs:
+		if isinstance(s, gpg.ValidSig):
+			check_key(feed_url, s.fingerprint)
+		else:
+			raise SafeException("Can't check sig: %s" % s)
+
+	return data
+
 while to_check:
 	feed = to_check.pop()
 	if feed in checked:
@@ -192,7 +214,17 @@ while to_check:
 	try:
 		if feed.startswith('/'):
 			with open(feed) as stream:
-				feed_obj = model.ZeroInstallFeed(qdom.parse(stream), local_path = feed)
+				root = qdom.parse(stream)
+
+				if "uri" in root.attrs:
+					stream.seek(0)
+					try:
+						check_gpg_sig(root.attrs['uri'], stream)
+					except SafeException, ex:
+						n_errors += 1
+						error_new_line('  %s' % ex)
+
+				feed_obj = model.ZeroInstallFeed(root, local_path = feed)
 			result('Local')
 		else:
 			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
@@ -203,25 +235,9 @@ while to_check:
 				except Exception as ex:
 					raise SafeException('Failed to fetch feed: {ex}'.format(ex = ex))
 				tmp.seek(0)
-				start = tmp.read(5)
-				if start == '<?xml':
-					result('Fetched')
-				elif start == '-----':
-					result('Old sig', colour = 'YELLOW')
-					error_new_line('  Feed has an old-style plain GPG signature. Use 0publish --xmlsign.',
-							colour = 'YELLOW')
-				else:
-					result('Fetched')
-					error_new_line('  Unknown format. File starts "%s"' % start)
 
+				data = check_gpg_sig(feed, tmp)
 				tmp.seek(0)
-				data, sigs = gpg.check_stream(tmp)
-
-				for s in sigs:
-					if isinstance(s, gpg.ValidSig):
-						check_key(feed, s.fingerprint)
-					else:
-						raise SafeException("Can't check sig: %s" % s)
 
 				feed_obj = model.ZeroInstallFeed(qdom.parse(data))
 
