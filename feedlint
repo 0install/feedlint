@@ -287,6 +287,13 @@ while to_check:
 				if testing_error:
 					raise SafeException("Version %s: %s (released %s)" % (impl.get_version(), testing_error, impl.released))
 
+			# Old Windows versions use 32-bit integers to store versions. Newer versions use 64-bit ones, but in general
+			# keeping the numbers small is helpful.
+			for i in range(0, len(impl.version), 2):
+				for x in impl.version[i]:
+					if x >= (1 << 31):
+						raise SafeException("Version %s: component %s won't fit in a 32-bit signed integer" % (impl.get_version(), x))
+
 		if highest_version and (highest_version.upstream_stability or model.testing) is model.testing:
 			print highlight('  Highest version (%s) is still "testing"' % highest_version.get_version(), 'YELLOW')
 		
