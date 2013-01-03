@@ -17,8 +17,8 @@ COLOURS = {
 	'WHITE'		: 7,
 }
 
-set_fg = curses.tigetstr('setf') or ''
-normal = curses.tigetstr('sgr0') or ''
+set_fg = curses.tigetstr('setf') or None
+normal = curses.tigetstr('sgr0') or None
 
 def checking(msg, indent = 2):
 	global cursor_pos
@@ -49,4 +49,7 @@ def error_new_line(msg, colour = 'RED'):
 	print highlight(msg, colour)
 
 def highlight(msg, colour):
-	return curses.tparm(set_fg, COLOURS[colour]) + msg + curses.tparm(normal)
+	if set_fg and normal:
+		return curses.tparm(set_fg, COLOURS[colour]) + msg + curses.tparm(normal)
+	else:
+		return msg
