@@ -177,6 +177,18 @@ def check_exists(url):
 	result('OK')
 	existing_urls.add(url)
 
+def scan_implementations(impls, dom):
+	"""Add each implementation in dom to impls. Error if duplicate."""
+	for elem in dom.childNodes:
+		if elem.uri != namespaces.XMLNS_IFACE: continue
+		if elem.name == 'implementation':
+			impl_id = elem.attrs['id']
+			if impl_id in impls:
+				raise SafeException("Duplicate ID {id}!".format(id = impl_id))
+			impls[impl_id] = elem
+		elif elem.name == 'group':
+			scan_implementations(impls, elem)
+
 n_errors = 0
 
 def check_gpg_sig(feed_url, stream):
@@ -214,17 +226,17 @@ while to_check:
 	try:
 		if feed.startswith('/'):
 			with open(feed) as stream:
-				root = qdom.parse(stream)
+				dom = qdom.parse(stream)
 
-				if "uri" in root.attrs:
+				if "uri" in dom.attrs:
 					stream.seek(0)
 					try:
-						check_gpg_sig(root.attrs['uri'], stream)
+						check_gpg_sig(dom.attrs['uri'], stream)
 					except SafeException, ex:
 						n_errors += 1
 						error_new_line('  %s' % ex)
 
-				feed_obj = model.ZeroInstallFeed(root, local_path = feed)
+				feed_obj = model.ZeroInstallFeed(dom, local_path = feed)
 			result('Local')
 		else:
 			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
@@ -239,13 +251,17 @@ while to_check:
 				data = check_gpg_sig(feed, tmp)
 				tmp.seek(0)
 
-				feed_obj = model.ZeroInstallFeed(qdom.parse(data))
+				dom = qdom.parse(data)
+				feed_obj = model.ZeroInstallFeed(dom)
 
 				if feed_obj.url != feed:
 					raise SafeException('Incorrect URL "%s"' % feed_obj.url)
 
 			finally:
 				tmp.close()
+
+		# Check for duplicate IDs
+		scan_implementations({}, dom)
 
 		for f in feed_obj.feeds:
 			info("Will check feed %s", f.uri)
