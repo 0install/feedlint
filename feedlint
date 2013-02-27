@@ -10,8 +10,11 @@ from logging import info
 
 from zeroinstall import SafeException
 from zeroinstall.injector import model, gpg, namespaces, qdom
+from zeroinstall.injector.config import load_config
 
 from display import checking, result, error, highlight, error_new_line
+
+config = load_config()
 
 now = time.time()
 
@@ -69,8 +72,15 @@ if len(args) < 1:
 
 checked = set()
 
+def arg_to_uri(arg):
+	app = config.app_mgr.lookup_app(arg, missing_ok = True)
+	if app is not None:
+		return app.get_requirements().interface_uri
+	else:
+		return model.canonical_iface_uri(a)
+
 try:
-	to_check = [model.canonical_iface_uri(a) for a in args]
+	to_check = [arg_to_uri(a) for a in args]
 except SafeException, ex:
 	if options.verbose: raise
 	print >>sys.stderr, ex

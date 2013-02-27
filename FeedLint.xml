@@ -33,6 +33,7 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
       <arg>FeedLint.xml</arg>
     </command>
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
+      <version not-before='1.9'/>
       <environment insert="" mode="prepend" name="PYTHONPATH"/>
     </requires>
     <implementation id="." version="0.8-post"/>
