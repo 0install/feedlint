@@ -278,7 +278,7 @@ while to_check:
 			to_check.append(f.uri)
 
 		highest_version = None
-		for impl in feed_obj.implementations.values():
+		for impl in sorted(feed_obj.implementations.values()):
 			if hasattr(impl, 'dependencies'):
 				for r in impl.dependencies.values():
 					if r.interface not in checked:
