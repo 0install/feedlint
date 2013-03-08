@@ -9,6 +9,7 @@ import logging, time, traceback
 from logging import info
 
 from zeroinstall import SafeException
+from zeroinstall.support import basedir
 from zeroinstall.injector import model, gpg, namespaces, qdom
 from zeroinstall.injector.config import load_config
 
@@ -43,6 +44,7 @@ assert port(urlparse.urlparse('http://foo:81')) == 81
 
 parser = OptionParser(usage="usage: %prog [options] feed.xml")
 parser.add_option("-d", "--dependencies", help="also check feeds for dependencies", action='store_true')
+parser.add_option("-o", "--offline", help="only perform offline checks", action='store_true')
 parser.add_option("-s", "--skip-archives", help="don't check the archives are OK", action='store_true')
 parser.add_option("-v", "--verbose", help="more verbose output", action='count')
 parser.add_option("-V", "--version", help="display version information", action='store_true')
@@ -58,6 +60,11 @@ if options.version:
 	print "under the terms of the GNU General Public License."
 	print "For more information about these matters, see the file named COPYING."
 	sys.exit(0)
+
+if options.offline:
+	config.network_use = model.network_offline
+	# Catch bugs
+	os.environ['http_proxy'] = 'http://localhost:9999/offline-mode'
 
 if options.verbose:
 	logger = logging.getLogger()
@@ -94,6 +101,8 @@ def check_key(feed_url, fingerprint):
 	else:
 		raise SafeException('Failed to find key with fingerprint %s on your keyring' % fingerprint)
 
+	if options.offline: return
+
 	key_url = urlparse.urljoin(feed_url, '%s.gpg' % key_id)
 
 	if key_url in checked:
@@ -105,6 +114,7 @@ def check_key(feed_url, fingerprint):
 		checked.add(key_url)
 
 def get_http_size(url, ttl = 3):
+	assert not options.offline
 	address = urlparse.urlparse(url)
 
 	if url.lower().startswith('http://'):
@@ -181,6 +191,7 @@ def check_source(source):
 existing_urls = set()
 def check_exists(url):
 	if url in existing_urls: return		# Already checked
+	if options.offline: return
 
 	checking("Checking URL exists %s" % url)
 	get_size(url)
@@ -248,6 +259,14 @@ while to_check:
 
 				feed_obj = model.ZeroInstallFeed(dom, local_path = feed)
 			result('Local')
+		elif options.offline:
+			cached = basedir.load_first_cache(namespaces.config_site, 'interfaces', model.escape(feed))
+			if not cached:
+				raise SafeException('Not cached (offline-mode)')
+			with open(cached, 'rb') as stream:
+				dom = qdom.parse(stream)
+			feed_obj = model.ZeroInstallFeed(dom)
+			result('Cached')
 		else:
 			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
 			try:
@@ -288,8 +307,9 @@ while to_check:
 						else:
 							check_exists(r.interface)
 			if hasattr(impl, 'download_sources') and not options.skip_archives:
-				for source in impl.download_sources:
-					check_source(source)
+				if not options.offline:
+					for source in impl.download_sources:
+						check_source(source)
 			if impl.local_path is None:
 				if not impl.digests:
 					raise SafeException("Version {version} has no digests".format(version = impl.get_version()))
