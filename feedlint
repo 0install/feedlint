@@ -161,7 +161,19 @@ def get_ftp_size(url):
 	finally:
 		ftp.close()
 
-def get_size(url):
+def get_size(url, base_url = None):
+	if '://' not in url:
+		# Local path
+		if base_url and base_url.startswith('/'):
+			# Local feed; OK
+			local_path = os.path.join(os.path.dirname(base_url), url)
+			if not os.path.exists(local_path):
+				raise SafeException("Local file '%s' does not exist (should be a URL?)" % url)
+			return os.path.getsize(local_path)
+		if base_url is not None:
+			raise SafeException("Local file reference '%s' in non-local feed '%s'" % (url, base_url))
+		# Fall-through to Unknown scheme error
+
 	scheme = urlparse.urlparse(url)[0].lower()
 	if scheme.startswith('http') or scheme.startswith('https'):
 		return get_http_size(url)
@@ -170,10 +182,10 @@ def get_size(url):
 	else:
 		raise SafeException("Unknown scheme '%s' in '%s'" % (scheme, url))
 
-def check_source(source):
+def check_source(feed_url, source):
 	if hasattr(source, 'url'):
 		checking("Checking archive %s" % source.url)
-		actual_size = get_size(source.url)
+		actual_size = get_size(source.url, feed_url)
 		if actual_size is None:
 			result("No Content-Length for archive; can't check", 'YELLOW')
 		else:
@@ -186,7 +198,7 @@ def check_source(source):
 			result('OK')
 	elif hasattr(source, 'steps'):
 		for step in source.steps:
-			check_source(step)
+			check_source(feed_url, step)
 
 existing_urls = set()
 def check_exists(url):
@@ -257,7 +269,7 @@ while to_check:
 						n_errors += 1
 						error_new_line('  %s' % ex)
 
-				feed_obj = model.ZeroInstallFeed(dom, local_path = feed)
+				feed_obj = model.ZeroInstallFeed(dom, local_path = feed if "uri" not in dom.attrs else None)
 			result('Local')
 		elif options.offline:
 			cached = basedir.load_first_cache(namespaces.config_site, 'interfaces', model.escape(feed))
@@ -309,7 +321,7 @@ while to_check:
 			if hasattr(impl, 'download_sources') and not options.skip_archives:
 				if not options.offline:
 					for source in impl.download_sources:
-						check_source(source)
+						check_source(feed_obj.url, source)
 			if impl.local_path is None:
 				if not impl.digests:
 					raise SafeException("Version {version} has no digests".format(version = impl.get_version()))
