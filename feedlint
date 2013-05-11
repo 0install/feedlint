@@ -9,7 +9,7 @@ import logging, time, traceback
 from logging import info
 
 from zeroinstall import SafeException
-from zeroinstall.support import basedir
+from zeroinstall.support import basedir, tasks
 from zeroinstall.injector import model, gpg, namespaces, qdom
 from zeroinstall.injector.config import load_config
 
@@ -93,13 +93,13 @@ except SafeException, ex:
 	print >>sys.stderr, ex
 	sys.exit(1)
 
-def check_key(feed_url, fingerprint):
-	for line in os.popen('gpg --with-colons --list-keys %s' % fingerprint):
+def check_key(feed_url, keyid):
+	for line in os.popen('gpg --with-colons --list-keys %s' % keyid):
 		if line.startswith('pub:'):
 			key_id = line.split(':')[4]
 			break
 	else:
-		raise SafeException('Failed to find key with fingerprint %s on your keyring' % fingerprint)
+		raise SafeException('Failed to find key "%s" on your keyring' % keyid)
 
 	if options.offline: return
 
@@ -241,6 +241,19 @@ def check_gpg_sig(feed_url, stream):
 	for s in sigs:
 		if isinstance(s, gpg.ValidSig):
 			check_key(feed_url, s.fingerprint)
+		elif isinstance(s, gpg.ErrSig) and s.need_key():
+			# Download missing key
+			key = s.need_key()
+			key_url = urlparse.urljoin(feed_url, '%s.gpg' % key)
+			dl = config.fetcher.download_url(key_url)
+			stream = dl.tempfile
+			tasks.wait_for_blocker(dl.downloaded)
+
+			stream.seek(0)
+			gpg.import_key(stream)
+			stream.close()
+
+			check_key(feed_url, key)
 		else:
 			raise SafeException("Can't check sig: %s" % s)
 
