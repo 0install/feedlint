@@ -1,10 +1,19 @@
 import sys
-import curses
+import os
 
-curses.setupterm()
+if os.name == 'nt':
+	n_cols = 80
+	set_fg = None
+	normal = None
+else:
+	import curses
+	curses.setupterm()
+
+	n_cols = curses.tigetnum('cols') or 80
+	set_fg = curses.tigetstr('setf') or None
+	normal = curses.tigetstr('sgr0') or None
 
 cursor_pos = 0
-n_cols = curses.tigetnum('cols') or 80
 
 COLOURS = {
 	'BLACK'		: 0,
@@ -16,9 +25,6 @@ COLOURS = {
 	'YELLOW'	: 6,
 	'WHITE'		: 7,
 }
-
-set_fg = curses.tigetstr('setf') or None
-normal = curses.tigetstr('sgr0') or None
 
 def checking(msg, indent = 2):
 	global cursor_pos
