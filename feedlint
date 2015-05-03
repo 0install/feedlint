@@ -268,9 +268,10 @@ while to_check:
 	checked.add(feed)
 
 	checking("Checking " + feed, indent = 0)
+	is_remote = feed.startswith('http://') or feed.startswith('https://')
 
 	try:
-		if feed.startswith('/'):
+		if not is_remote:
 			with open(feed) as stream:
 				dom = qdom.parse(stream)
 
