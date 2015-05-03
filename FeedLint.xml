@@ -36,6 +36,6 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
       <version not-before="1.9"/>
       <environment insert="" mode="prepend" name="PYTHONPATH"/>
     </requires>
-    <implementation id="." released="2015-05-03" version="0.9"/>
+    <implementation id="." version="0.9-post"/>
   </group>
 </interface>
