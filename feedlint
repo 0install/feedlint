@@ -23,6 +23,13 @@ version = '0.9'
 
 WEEK = 60 * 60 * 24 * 7
 
+class Skip:
+	def __init__(self, msg):
+		self.msg = msg
+
+	def __str__(self):
+		return "Skip (%s)" % self.msg
+
 def host(address):
 	if hasattr(address, 'hostname'):
 		return address.hostname
@@ -130,6 +137,9 @@ def get_http_size(url, ttl = 3):
 	else:
 		path = ''
 
+	if host(address).endswith('.s3.amazonaws.com'):
+		return Skip("S3")
+
 	http.request('HEAD', '/' + path, headers = {'Host': host(address)})
 	response = http.getresponse()
 	try:
@@ -186,7 +196,9 @@ def check_source(feed_url, source):
 	if hasattr(source, 'url'):
 		checking("Checking archive %s" % source.url)
 		actual_size = get_size(source.url, feed_url)
-		if actual_size is None:
+		if isinstance(actual_size, Skip):
+			result(str(actual_size), 'YELLOW')
+		elif actual_size is None:
 			result("No Content-Length for archive; can't check", 'YELLOW')
 		else:
 			actual_size = int(actual_size)
@@ -206,8 +218,11 @@ def check_exists(url):
 	if options.offline: return
 
 	checking("Checking URL exists %s" % url)
-	get_size(url)
-	result('OK')
+	size = get_size(url)
+	if isinstance(size, Skip):
+		result(str(size))
+	else:
+		result('OK')
 	existing_urls.add(url)
 
 def scan_implementations(impls, dom):
