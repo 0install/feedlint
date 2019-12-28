@@ -102,9 +102,10 @@ except SafeException, ex:
 
 def check_key(feed_url, keyid):
 	for line in os.popen('gpg --with-colons --list-keys %s' % keyid):
-		if line.startswith('pub:'):
+		if line.startswith('pub:') or line.startswith('sub'):
 			key_id = line.split(':')[4]
-			break
+			if keyid.endswith(key_id):
+				break
 	else:
 		raise SafeException('Failed to find key "%s" on your keyring' % keyid)
 
