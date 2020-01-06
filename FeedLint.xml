@@ -9,7 +9,7 @@ Install feed can be downloaded, that it is valid and that all the links in it
 still work.
 
 Run this on all your feeds from time-to-time to make sure they still work.</description>
-  <homepage>http://0install.net</homepage>
+  <homepage>https://docs.0install.net/tools/feedlint/</homepage>
 
   <feed-for interface="http://0install.net/2007/interfaces/FeedLint.xml"/>
   <category>Development</category>
@@ -22,12 +22,12 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
 
   <group license="OSI Approved :: GNU General Public License (GPL)" main="feedlint">
     <command name="run" path="feedlint">
-      <runner interface="http://repo.roscidus.com/python/python">
+      <runner interface="https://apps.0install.net/python/python.xml">
 	<version before="3"/>
       </runner>
     </command>
     <command name="test" path="feedlint">
-      <runner interface="http://repo.roscidus.com/python/python">
+      <runner interface="https://apps.0install.net/python/python.xml">
 	<version before="3"/>
       </runner>
       <arg>FeedLint.xml</arg>
