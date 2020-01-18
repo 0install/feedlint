@@ -3,7 +3,8 @@
 from optparse import OptionParser
 import sys, shutil, tempfile, urllib.parse
 import socket
-import urllib.request, urllib.error, urllib.parse, os, http.client
+import urllib.request, urllib.error, urllib.parse, os
+from http import client as http_client
 import ftplib
 import logging, time, traceback
 from logging import info
@@ -91,7 +92,7 @@ def arg_to_uri(arg):
 	if app is not None:
 		return app.get_requirements().interface_uri
 	else:
-		return model.canonical_iface_uri(a)
+		return model.canonical_iface_uri(arg)
 
 try:
 	to_check = [arg_to_uri(a) for a in args]
@@ -126,9 +127,9 @@ def get_http_size(url, ttl = 3):
 	address = urllib.parse.urlparse(url)
 
 	if url.lower().startswith('http://'):
-		http = http.client.HTTPConnection(host(address), port(address) or 80)
+		http = http_client.HTTPConnection(host(address), port(address) or 80)
 	elif url.lower().startswith('https://'):
-		http = http.client.HTTPSConnection(host(address), port(address) or 443)
+		http = http_client.HTTPSConnection(host(address), port(address) or 443)
 	else:
 		assert False, url
 
@@ -242,9 +243,9 @@ n_errors = 0
 
 def check_gpg_sig(feed_url, stream):
 	start = stream.read(5)
-	if start == '<?xml':
+	if start == b'<?xml':
 		result('Fetched')
-	elif start == '-----':
+	elif start == b'-----':
 		result('Old sig', colour = 'RED')
 		error_new_line('  Feed has an old-style plain GPG signature. Use 0publish --xmlsign.',
 				colour = 'YELLOW')
@@ -288,7 +289,7 @@ while to_check:
 
 	try:
 		if not is_remote:
-			with open(feed) as stream:
+			with open(feed, 'rb') as stream:
 				dom = qdom.parse(stream)
 
 				if "uri" in dom.attrs:
@@ -391,7 +392,7 @@ while to_check:
 		for icon in feed_obj.get_metadata(namespaces.XMLNS_IFACE, 'icon'):
 			check_exists(icon.getAttribute('href'))
 				
-	except (urllib.error.HTTPError, http.client.BadStatusLine, socket.error, ftplib.error_perm) as ex:
+	except (urllib.error.HTTPError, http_client.BadStatusLine, socket.error, ftplib.error_perm) as ex:
 		err_msg = str(ex).strip() or str(type(ex))
 		error_new_line('  ' + err_msg)
 		n_errors += 1

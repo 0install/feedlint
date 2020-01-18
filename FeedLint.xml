@@ -21,19 +21,15 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
   </release:management>
 
   <group license="OSI Approved :: GNU General Public License (GPL)" main="feedlint">
+    <requires interface="https://apps.0install.net/python/python.xml" version='3..'/>
     <command name="run" path="feedlint">
-      <runner interface="https://apps.0install.net/python/python.xml">
-	<version before="3"/>
-      </runner>
+      <runner interface="https://apps.0install.net/python/python.xml"/>
     </command>
     <command name="test" path="feedlint">
-      <runner interface="https://apps.0install.net/python/python.xml">
-	<version before="3"/>
-      </runner>
+      <runner interface="https://apps.0install.net/python/python.xml"/>
       <arg>FeedLint.xml</arg>
     </command>
-    <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
-      <version not-before="1.9"/>
+    <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml" version='2.3.8..'>
       <environment insert="" mode="prepend" name="PYTHONPATH"/>
     </requires>
     <implementation id="." version="0.9-post"/>
