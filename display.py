@@ -39,11 +39,11 @@ def result(msg, colour = 'GREEN'):
 	global cursor_pos
 	result_col = n_cols - max(15, len(msg) + 5)
 	if cursor_pos > result_col:
-		print
+		print()
 		cursor_pos = 0
 	if colour:
 		msg = highlight(msg, colour)
-	print " " * (result_col - cursor_pos), "[ %s ]" % msg
+	print(" " * (result_col - cursor_pos), "[ %s ]" % msg)
 	cursor_pos = 0
 
 def error(msg):
@@ -52,7 +52,7 @@ def error(msg):
 def error_new_line(msg, colour = 'RED'):
 	if cursor_pos:
 		error('ERROR')
-	print highlight(msg, colour)
+	print(highlight(msg, colour))
 
 def highlight(msg, colour):
 	if set_fg and normal:

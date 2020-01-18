@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 from optparse import OptionParser
-import sys, shutil, tempfile, urlparse
+import sys, shutil, tempfile, urllib.parse
 import socket
-import urllib2, os, httplib
+import urllib.request, urllib.error, urllib.parse, os, http.client
 import ftplib
 import logging, time, traceback
 from logging import info
@@ -47,7 +47,7 @@ def port(address):
 			return None
 
 assert port(('http', 'foo:81')) == 81
-assert port(urlparse.urlparse('http://foo:81')) == 81
+assert port(urllib.parse.urlparse('http://foo:81')) == 81
 
 parser = OptionParser(usage="usage: %prog [options] feed.xml")
 parser.add_option("-d", "--dependencies", help="also check feeds for dependencies", action='store_true')
@@ -59,13 +59,13 @@ parser.add_option("-V", "--version", help="display version information", action=
 (options, args) = parser.parse_args()
 
 if options.version:
-	print "FeedLint (zero-install) " + version
-	print "Copyright (C) 2007 Thomas Leonard"
-	print "This program comes with ABSOLUTELY NO WARRANTY,"
-	print "to the extent permitted by law."
-	print "You may redistribute copies of this program"
-	print "under the terms of the GNU General Public License."
-	print "For more information about these matters, see the file named COPYING."
+	print("FeedLint (zero-install) " + version)
+	print("Copyright (C) 2007 Thomas Leonard")
+	print("This program comes with ABSOLUTELY NO WARRANTY,")
+	print("to the extent permitted by law.")
+	print("You may redistribute copies of this program")
+	print("under the terms of the GNU General Public License.")
+	print("For more information about these matters, see the file named COPYING.")
 	sys.exit(0)
 
 if options.offline:
@@ -95,9 +95,9 @@ def arg_to_uri(arg):
 
 try:
 	to_check = [arg_to_uri(a) for a in args]
-except SafeException, ex:
+except SafeException as ex:
 	if options.verbose: raise
-	print >>sys.stderr, ex
+	print(ex, file=sys.stderr)
 	sys.exit(1)
 
 def check_key(feed_url, keyid):
@@ -111,24 +111,24 @@ def check_key(feed_url, keyid):
 
 	if options.offline: return
 
-	key_url = urlparse.urljoin(feed_url, '%s.gpg' % key_id)
+	key_url = urllib.parse.urljoin(feed_url, '%s.gpg' % key_id)
 
 	if key_url in checked:
 		info("(already checked key URL %s)", key_url)
 	else:
 		checking("Checking key %s" % key_url)
-		urllib2.urlopen(key_url).read()
+		urllib.request.urlopen(key_url).read()
 		result('OK')
 		checked.add(key_url)
 
 def get_http_size(url, ttl = 3):
 	assert not options.offline
-	address = urlparse.urlparse(url)
+	address = urllib.parse.urlparse(url)
 
 	if url.lower().startswith('http://'):
-		http = httplib.HTTPConnection(host(address), port(address) or 80)
+		http = http.client.HTTPConnection(host(address), port(address) or 80)
 	elif url.lower().startswith('https://'):
-		http = httplib.HTTPSConnection(host(address), port(address) or 443)
+		http = http.client.HTTPSConnection(host(address), port(address) or 443)
 	else:
 		assert False, url
 
@@ -148,7 +148,7 @@ def get_http_size(url, ttl = 3):
 			return response.getheader('Content-Length')
 		elif response.status in (301, 302, 303):
 			new_url_rel = response.getheader('Location') or response.getheader('URI')
-			new_url = urlparse.urljoin(url, new_url_rel)
+			new_url = urllib.parse.urljoin(url, new_url_rel)
 		else:
 			raise SafeException("HTTP error: got status code %s" % response.status)
 	finally:
@@ -163,7 +163,7 @@ def get_http_size(url, ttl = 3):
 		raise SafeException('Too many redirections.')
 
 def get_ftp_size(url):
-	address = urlparse.urlparse(url)
+	address = urllib.parse.urlparse(url)
 	ftp = ftplib.FTP(host(address))
 	try:
 		ftp.login()
@@ -185,7 +185,7 @@ def get_size(url, base_url = None):
 			raise SafeException("Local file reference '%s' in non-local feed '%s'" % (url, base_url))
 		# Fall-through to Unknown scheme error
 
-	scheme = urlparse.urlparse(url)[0].lower()
+	scheme = urllib.parse.urlparse(url)[0].lower()
 	if scheme.startswith('http') or scheme.startswith('https'):
 		return get_http_size(url)
 	elif scheme.startswith('ftp'):
@@ -260,7 +260,7 @@ def check_gpg_sig(feed_url, stream):
 		elif isinstance(s, gpg.ErrSig) and s.need_key():
 			# Download missing key
 			key = s.need_key()
-			key_url = urlparse.urljoin(feed_url, '%s.gpg' % key)
+			key_url = urllib.parse.urljoin(feed_url, '%s.gpg' % key)
 			dl = config.fetcher.download_url(key_url)
 			stream = dl.tempfile
 			tasks.wait_for_blocker(dl.downloaded)
@@ -295,7 +295,7 @@ while to_check:
 					stream.seek(0)
 					try:
 						check_gpg_sig(dom.attrs['uri'], stream)
-					except SafeException, ex:
+					except SafeException as ex:
 						n_errors += 1
 						error_new_line('  %s' % ex)
 
@@ -313,7 +313,7 @@ while to_check:
 			tmp = tempfile.TemporaryFile(prefix = 'feedlint-')
 			try:
 				try:
-					stream = urllib2.urlopen(feed)
+					stream = urllib.request.urlopen(feed)
 					shutil.copyfileobj(stream, tmp)
 				except Exception as ex:
 					raise SafeException('Failed to fetch feed: {ex}'.format(ex = ex))
@@ -341,7 +341,7 @@ while to_check:
 		highest_version = None
 		for impl in sorted(feed_obj.implementations.values()):
 			if hasattr(impl, 'dependencies'):
-				for r in impl.dependencies.values():
+				for r in list(impl.dependencies.values()):
 					if r.interface not in checked:
 						info("Will check dependency %s", r)
 						if options.dependencies:
@@ -366,7 +366,7 @@ while to_check:
 				else:
 					try:
 						released = time.strptime(impl.released, '%Y-%m-%d')
-					except ValueError, ex:
+					except ValueError as ex:
 						testing_error = "Can't parse date"
 					else:
 						ago = now - time.mktime(released)
@@ -383,7 +383,7 @@ while to_check:
 						raise SafeException("Version %s: component %s won't fit in a 32-bit signed integer" % (impl.get_version(), x))
 
 		if highest_version and (highest_version.upstream_stability or model.testing) is model.testing:
-			print highlight('  Highest version (%s) is still "testing"' % highest_version.get_version(), 'YELLOW')
+			print(highlight('  Highest version (%s) is still "testing"' % highest_version.get_version(), 'YELLOW'))
 		
 		for homepage in feed_obj.get_metadata(namespaces.XMLNS_IFACE, 'homepage'):
 			check_exists(homepage.content)
@@ -391,18 +391,18 @@ while to_check:
 		for icon in feed_obj.get_metadata(namespaces.XMLNS_IFACE, 'icon'):
 			check_exists(icon.getAttribute('href'))
 				
-	except (urllib2.HTTPError, httplib.BadStatusLine, socket.error, ftplib.error_perm), ex:
+	except (urllib.error.HTTPError, http.client.BadStatusLine, socket.error, ftplib.error_perm) as ex:
 		err_msg = str(ex).strip() or str(type(ex))
 		error_new_line('  ' + err_msg)
 		n_errors += 1
 		if options.verbose: traceback.print_exc()
-	except SafeException, ex:
+	except SafeException as ex:
 		if options.verbose: raise
 		error_new_line('  ' + str(ex))
 		n_errors += 1
 
 if n_errors == 0:
-	print "OK"
+	print("OK")
 else:
-	print "\nERRORS FOUND:", n_errors
+	print("\nERRORS FOUND:", n_errors)
 	sys.exit(1)
