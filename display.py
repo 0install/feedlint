@@ -56,6 +56,6 @@ def error_new_line(msg, colour = 'RED'):
 
 def highlight(msg, colour):
 	if set_fg and normal:
-		return curses.tparm(set_fg, COLOURS[colour]) + msg + curses.tparm(normal)
+		return curses.tparm(set_fg, COLOURS[colour]).decode() + msg + curses.tparm(normal).decode()
 	else:
 		return msg
