@@ -20,7 +20,7 @@ config = load_config()
 
 now = time.time()
 
-version = '0.10'
+version = '0.11'
 
 WEEK = 60 * 60 * 24 * 7
 
