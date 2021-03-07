@@ -11,7 +11,7 @@ still work.
 Run this on all your feeds from time-to-time to make sure they still work.</description>
   <homepage>https://docs.0install.net/tools/feedlint/</homepage>
 
-  <feed-for interface="http://0install.net/2007/interfaces/FeedLint.xml"/>
+  <feed-for interface="https://apps.0install.net/0install/feedlint.xml"/>
   <category>Development</category>
   <needs-terminal/>
 
@@ -29,7 +29,7 @@ Run this on all your feeds from time-to-time to make sure they still work.</desc
       <runner interface="https://apps.0install.net/python/python.xml"/>
       <arg>FeedLint.xml</arg>
     </command>
-    <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml" version="2.3.8..">
+    <requires interface="https://apps.0install.net/0install/0install-python.xml" version="2.3.8..">
       <environment insert="" mode="prepend" name="PYTHONPATH"/>
     </requires>
     <implementation id="." version="0.11-post"/>
